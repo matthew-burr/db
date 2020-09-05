@@ -7,40 +7,39 @@ import (
 	"strings"
 )
 
-type File = *DBFile
-
+// A DB is a simple key, value database.
 type DB struct {
 	*DBFile
 	index map[string]int64
 }
 
+// Init initializes the database from a file. Once initialized, you can start querying the database.
 func (d DB) Init(filepath string) DB {
 	d.DBFile = OpenDBFile(filepath)
 	return d.Reindex()
 }
 
+// Reindex rebuilds the database's index.
 func (d DB) Reindex() DB {
-	d.MoveToStart()
-	defer d.MoveToEnd()
-
 	d.index = make(map[string]int64)
 
-	buf, offset := bufio.NewReaderSize(d.DBFile, 4096), int64(0)
-	for ln, err := buf.ReadString('\n'); err == nil; ln, err = buf.ReadString('\n') {
-		key, _ := d.ParseEntry(ln)
-		d.index[key] = offset
-		offset += int64(len(ln))
+	for buf := NewDBFileIterator(d.DBFile); !buf.Done(); buf.MoveNext() {
+		k, _ := buf.ReadParseEntry()
+		d.index[k] = buf.Offset()
 	}
 
 	return d
 }
 
+// Write adds or updates a database entry by writing the value to the key.
 func (d DB) Write(key, value string) DB {
-	offset := d.WriteEntry(key, value)
+	offset := d.WriteParseEntry(key, value)
 	d.index[key] = offset
 	return d
 }
 
+// Debug provides some basic ability to check the validity of the database structure. Given a key, it will
+// determine the offset for that key, insure it's a valid offset, and return what data it finds at that offset.
 func (d DB) Debug(key string) DB {
 	if offset, found := d.index[key]; found {
 		fmt.Printf("key: %s: offset = %d\n", key, offset)
@@ -55,6 +54,9 @@ func (d DB) Debug(key string) DB {
 	return d
 }
 
+// Read reads a key's value into a string.
+// To facilitate a pattern of repeated reads, Read accepts a pointer to a string where it will
+// write the value, and then returns the DB.
 func (d DB) Read(key string, value *string) DB {
 	if offset, found := d.index[key]; found {
 		k, v := d.ReadParseEntry(offset)
@@ -68,6 +70,7 @@ func (d DB) Read(key string, value *string) DB {
 	return d
 }
 
+// Shutdown closes the database and should always be executed before quitting the program.
 func (d DB) Shutdown() {
 	d.DBFile.Close()
 }
