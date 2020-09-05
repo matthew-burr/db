@@ -9,7 +9,7 @@ import (
 // A DB is a simple key, value database.
 type DB struct {
 	*file.DBFile
-	index map[string]int64
+	index DBIndex
 }
 
 // Init initializes the database from a file. Once initialized, you can start querying the database.
@@ -21,20 +21,14 @@ func Init(filepath string) DB {
 
 // Reindex rebuilds the database's index.
 func (d DB) Reindex() DB {
-	d.index = make(map[string]int64)
-
-	for buf := file.Iterator(d.DBFile); !buf.Done(); buf.MoveNext() {
-		k, _ := buf.ReadEntry().Tuple()
-		d.index[k] = buf.Offset()
-	}
-
+	d.index = BuildIndex(d.DBFile)
 	return d
 }
 
 // Write adds or updates a database entry by writing the value to the key.
 func (d DB) Write(key, value string) DB {
-	offset := d.WriteEntry(file.NewEntry(key, value))
-	d.index[key] = offset
+	entry := d.WriteEntry(file.NewEntry(key, value))
+	d.index.Update(entry)
 	return d
 }
 

@@ -1,6 +1,9 @@
 package file
 
-import "bufio"
+import (
+	"bufio"
+	"io"
+)
 
 // A DBFileIterator helps to iterate over a DBFile one entry at a time.
 type DBFileIterator struct {
@@ -9,8 +12,13 @@ type DBFileIterator struct {
 	ln                 string
 }
 
+// A Cloner is an object that provides a method to produce an io.Reader as a Clone of an existing io.Reader.
+type Cloner interface {
+	Clone() io.Reader
+}
+
 // Iterator creates a new DBFileIterator.
-func Iterator(file *DBFile) *DBFileIterator {
+func Iterator(file Cloner) *DBFileIterator {
 	d := &DBFileIterator{
 		rdr: bufio.NewReaderSize(file.Clone(), 4096),
 	}

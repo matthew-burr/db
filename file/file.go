@@ -27,21 +27,12 @@ func Open(filepath string) *DBFile {
 
 // Clone creates a copy of the DBFile with a new file pointer.
 // The cloned copy is positioned at the beginning of the file.
-func (d *DBFile) Clone() *DBFile {
+func (d *DBFile) Clone() io.Reader {
 	return Open(d.File.Name())
 }
 
-// MoveToStart moves the DBFile's offset to the start of the file.
-func (d *DBFile) MoveToStart() {
-	offset, err := d.File.Seek(0, io.SeekStart)
-	if err != nil {
-		panic(err)
-	}
-	d.Offset = offset
-}
-
-// MoveToEnd moves the DBFile's offset to the end of the file.
-func (d *DBFile) MoveToEnd() {
+// moveToEnd moves the DBFile's offset to the end of the file.
+func (d *DBFile) moveToEnd() {
 	offset, err := d.File.Seek(0, io.SeekEnd)
 	if err != nil {
 		panic(err)
@@ -49,8 +40,8 @@ func (d *DBFile) MoveToEnd() {
 	d.Offset = offset
 }
 
-// MoveToOffset moves the DBFile's offset to a specific position relative to the start of the file.
-func (d *DBFile) MoveToOffset(offset int64) {
+// moveToOffset moves the DBFile's offset to a specific position relative to the start of the file.
+func (d *DBFile) moveToOffset(offset int64) {
 	_, err := d.File.Seek(offset, io.SeekStart)
 	if err != nil {
 		panic(err)
@@ -64,7 +55,8 @@ func (d *DBFile) CurrentOffset() int64 {
 }
 
 // WriteEntry writes a new key value pair to the DBFile.
-func (d *DBFile) WriteEntry(entry DBFileEntry) int64 {
+// It returns the entry updated with the entry's offset
+func (d *DBFile) WriteEntry(entry DBFileEntry) DBFileEntry {
 	offset := d.CurrentOffset()
 
 	count, err := entry.WriteTo(d.File)
@@ -73,13 +65,13 @@ func (d *DBFile) WriteEntry(entry DBFileEntry) int64 {
 	}
 	d.Offset += count
 
-	return offset
+	return entry.At(offset)
 }
 
 // ReadRawEntry reads the raw data from a specified offset in the file.
 func (d *DBFile) ReadRawEntry(offset int64) string {
-	d.MoveToOffset(offset)
-	defer d.MoveToEnd()
+	d.moveToOffset(offset)
+	defer d.moveToEnd()
 
 	scn := bufio.NewScanner(d)
 	if scn.Scan() {
