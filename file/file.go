@@ -2,10 +2,8 @@ package file
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"os"
-	"strings"
 )
 
 // A DBFile encapsulates the interaction between the database and the filesystem.
@@ -15,8 +13,8 @@ type DBFile struct {
 	Offset int64 // The current offset in the file.
 }
 
-// OpenDBFile opens a file for use as a DBFile.
-func OpenDBFile(filepath string) *DBFile {
+// Open opens a file for use as a DBFile.
+func Open(filepath string) *DBFile {
 	file, err := os.OpenFile(filepath, os.O_RDWR|os.O_SYNC|os.O_CREATE, 0666)
 	if err != nil {
 		panic(err)
@@ -30,7 +28,7 @@ func OpenDBFile(filepath string) *DBFile {
 // Clone creates a copy of the DBFile with a new file pointer.
 // The cloned copy is positioned at the beginning of the file.
 func (d *DBFile) Clone() *DBFile {
-	return OpenDBFile(d.File.Name())
+	return Open(d.File.Name())
 }
 
 // MoveToStart moves the DBFile's offset to the start of the file.
@@ -66,25 +64,20 @@ func (d *DBFile) CurrentOffset() int64 {
 }
 
 // WriteEntry writes a new key value pair to the DBFile.
-func (d *DBFile) writeEntry(entry string) int64 {
+func (d *DBFile) WriteEntry(entry DBFileEntry) int64 {
 	offset := d.CurrentOffset()
 
-	count, err := fmt.Fprintln(d, entry)
+	count, err := entry.WriteTo(d.File)
 	if err != nil {
 		panic(err)
 	}
-	d.Offset += int64(count)
+	d.Offset += count
 
 	return offset
 }
 
-// WriteParseEntry parses a key value pair into a valid entry and writes it to the file.
-func (d *DBFile) WriteParseEntry(key, value string) int64 {
-	return d.writeEntry(fmt.Sprintf("%s:%s", key, value))
-}
-
-// ReadEntry reads the raw data from a specified offset in the file.
-func (d *DBFile) ReadEntry(offset int64) string {
+// ReadRawEntry reads the raw data from a specified offset in the file.
+func (d *DBFile) ReadRawEntry(offset int64) string {
 	d.MoveToOffset(offset)
 	defer d.MoveToEnd()
 
@@ -96,9 +89,9 @@ func (d *DBFile) ReadEntry(offset int64) string {
 	return ""
 }
 
-// ReadParseEntry reads an entry from the file, parsing it into its key, value pair.
-func (d *DBFile) ReadParseEntry(offset int64) (key, value string) {
-	return d.ParseEntry(d.ReadEntry(offset))
+// ReadEntry retrieves the DBFileEntry at the given offset.
+func (d *DBFile) ReadEntry(offset int64) DBFileEntry {
+	return ParseEntry(d.ReadRawEntry(offset)).At(offset)
 }
 
 // Read implements the io.Reader interface for reading the file.
@@ -114,64 +107,4 @@ func (d *DBFile) Write(b []byte) (n int, err error) {
 // Close closes the file.
 func (d *DBFile) Close() {
 	d.File.Close()
-}
-
-// ParseEntry parses a file entry into a key, value pair.
-func (*DBFile) ParseEntry(entry string) (key, value string) {
-	parts := strings.SplitN(entry, ":", 2)
-	if len(parts) != 2 {
-		panic(fmt.Errorf("corrupt file"))
-	}
-	return parts[0], parts[1]
-}
-
-func parseEntry(entry string) (key, value string) {
-	parts := strings.SplitN(entry, ":", 2)
-	if len(parts) != 2 {
-		panic(fmt.Errorf("corrupt file"))
-	}
-	return parts[0], parts[1]
-}
-
-// A DBFileIterator helps to iterate over a DBFile one entry at a time.
-type DBFileIterator struct {
-	rdr                *bufio.Reader
-	offset, nextOffset int64
-	ln                 string
-}
-
-// NewDBFileIterator creates a new DBFileIterator.
-func NewDBFileIterator(file *DBFile) *DBFileIterator {
-	d := &DBFileIterator{
-		rdr: bufio.NewReaderSize(file.Clone(), 4096),
-	}
-	d.MoveNext()
-	return d
-}
-
-func (d *DBFileIterator) MoveNext() {
-	d.offset = d.nextOffset
-
-	ln, err := d.rdr.ReadString('\n')
-	if err != nil {
-		d.offset = -1
-		d.nextOffset = -1
-		return
-	}
-
-	d.ln = ln
-	d.nextOffset += int64(len(ln))
-}
-
-func (d *DBFileIterator) ReadParseEntry() (key, value string) {
-	return parseEntry(d.ln)
-}
-
-// Offset is the offset of the most recently read entry.
-func (d *DBFileIterator) Offset() int64 {
-	return d.offset
-}
-
-func (d *DBFileIterator) Done() bool {
-	return d.offset == -1
 }
