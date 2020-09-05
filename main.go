@@ -5,17 +5,19 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/matthew-burr/db/file"
 )
 
 // A DB is a simple key, value database.
 type DB struct {
-	*DBFile
+	*file.DBFile
 	index map[string]int64
 }
 
 // Init initializes the database from a file. Once initialized, you can start querying the database.
 func (d DB) Init(filepath string) DB {
-	d.DBFile = OpenDBFile(filepath)
+	d.DBFile = file.OpenDBFile(filepath)
 	return d.Reindex()
 }
 
@@ -23,7 +25,7 @@ func (d DB) Init(filepath string) DB {
 func (d DB) Reindex() DB {
 	d.index = make(map[string]int64)
 
-	for buf := NewDBFileIterator(d.DBFile); !buf.Done(); buf.MoveNext() {
+	for buf := file.NewDBFileIterator(d.DBFile); !buf.Done(); buf.MoveNext() {
 		k, _ := buf.ReadParseEntry()
 		d.index[k] = buf.Offset()
 	}
