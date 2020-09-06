@@ -41,7 +41,7 @@ func (d DB) Debug(key string) DB {
 			fmt.Printf("offset exceeds file size of %d\n", fileSize)
 			return d
 		}
-		fmt.Printf("entry at %d: %s\n", offset, d.ReadRawEntry(offset))
+		// fmt.Printf("entry at %d: %s\n", offset, d.ReadRawEntry(offset))
 	} else {
 		fmt.Printf("key: %s: not found in index\n", key)
 	}

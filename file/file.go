@@ -1,7 +1,6 @@
 package file
 
 import (
-	"encoding/binary"
 	"io"
 	"os"
 )
@@ -59,43 +58,27 @@ func (d *DBFile) CurrentOffset() int64 {
 func (d *DBFile) WriteEntry(entry DBFileEntry) DBFileEntry {
 	offset := d.CurrentOffset()
 
-	bits := []byte(entry.String())
-
-	var n int64 = int64(binary.Size(bits))
-	if err := binary.Write(d.File, binary.LittleEndian, n); err != nil {
-		panic(err)
-	}
-
-	n += int64(binary.Size(n))
-	if err := binary.Write(d.File, binary.LittleEndian, bits); err != nil {
+	n, err := EncodeTo(d.File, entry)
+	if err != nil {
 		panic(err)
 	}
 
 	d.Offset += int64(n)
+
 	return entry.At(offset)
-}
-
-// ReadRawEntry reads the raw data from a specified offset in the file.
-func (d *DBFile) ReadRawEntry(offset int64) string {
-	d.moveToOffset(offset)
-	defer d.moveToEnd()
-
-	var n int64
-	if err := binary.Read(d.File, binary.LittleEndian, &n); err != nil {
-		return ""
-	}
-
-	bits := make([]byte, n)
-	if err := binary.Read(d.File, binary.LittleEndian, bits); err != nil {
-		panic(err)
-	}
-
-	return string(bits)
 }
 
 // ReadEntry retrieves the DBFileEntry at the given offset.
 func (d *DBFile) ReadEntry(offset int64) DBFileEntry {
-	return ParseEntry(d.ReadRawEntry(offset)).At(offset)
+	d.moveToOffset(offset)
+	defer d.moveToEnd()
+
+	entry := DBFileEntry{}
+	_, err := DecodeFrom(d.File, &entry)
+	if err != nil {
+		panic(err)
+	}
+	return entry
 }
 
 // Read implements the io.Reader interface for reading the file.

@@ -1,7 +1,6 @@
 package file
 
 import (
-	"encoding/binary"
 	"io"
 )
 
@@ -9,7 +8,7 @@ import (
 type DBFileIterator struct {
 	rdr                io.Reader
 	offset, nextOffset int64
-	ln                 string
+	entry              DBFileEntry
 }
 
 // A Cloner is an object that provides a method to produce an io.Reader as a Clone of an existing io.Reader.
@@ -30,25 +29,24 @@ func Iterator(file Cloner) *DBFileIterator {
 func (d *DBFileIterator) MoveNext() {
 	d.offset = d.nextOffset
 
-	var n int64
-	if err := binary.Read(d.rdr, binary.LittleEndian, &n); err != nil {
-		d.offset = -1
-		d.nextOffset = -1
-		return
-	}
-
-	var bits = make([]byte, n)
-	if err := binary.Read(d.rdr, binary.LittleEndian, bits); err != nil {
+	entry := DBFileEntry{}
+	n, err := DecodeFrom(d.rdr, &entry)
+	if err != nil {
+		if err == io.EOF {
+			d.offset = -1
+			d.nextOffset = -1
+			return
+		}
 		panic(err)
 	}
 
-	d.ln = string(bits)
-	d.nextOffset += n + int64(binary.Size(n))
+	d.entry = entry
+	d.nextOffset += int64(n)
 }
 
 // ReadEntry returns the current entry.
 func (d *DBFileIterator) ReadEntry() DBFileEntry {
-	return ParseEntry(d.ln)
+	return d.entry
 }
 
 // Offset is the offset of the most recently read entry.
