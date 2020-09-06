@@ -59,6 +59,11 @@ func (d DBFileEntry) Tuple() (key, value string) {
 
 // WriteTo writes the DBFileEntry in a key:value format to a writer.
 func (d DBFileEntry) WriteTo(w io.Writer) (int64, error) {
-	n, err := fmt.Fprintf(w, "%s:%s", d.key, d.value)
+	n, err := fmt.Fprintf(w, "%s", d)
 	return int64(n), err
+}
+
+// String presents the DBFileEntry as a string
+func (d DBFileEntry) String() string {
+	return fmt.Sprintf("%s:%s", d.key, d.value)
 }

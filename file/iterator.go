@@ -1,13 +1,13 @@
 package file
 
 import (
-	"bufio"
+	"encoding/binary"
 	"io"
 )
 
 // A DBFileIterator helps to iterate over a DBFile one entry at a time.
 type DBFileIterator struct {
-	rdr                *bufio.Reader
+	rdr                io.Reader
 	offset, nextOffset int64
 	ln                 string
 }
@@ -20,7 +20,7 @@ type Cloner interface {
 // Iterator creates a new DBFileIterator.
 func Iterator(file Cloner) *DBFileIterator {
 	d := &DBFileIterator{
-		rdr: bufio.NewReaderSize(file.Clone(), 4096),
+		rdr: file.Clone(),
 	}
 	d.MoveNext()
 	return d
@@ -30,15 +30,20 @@ func Iterator(file Cloner) *DBFileIterator {
 func (d *DBFileIterator) MoveNext() {
 	d.offset = d.nextOffset
 
-	ln, err := d.rdr.ReadString('\n')
-	if err != nil {
+	var n int64
+	if err := binary.Read(d.rdr, binary.LittleEndian, &n); err != nil {
 		d.offset = -1
 		d.nextOffset = -1
 		return
 	}
 
-	d.ln = ln
-	d.nextOffset += int64(len(ln))
+	var bits = make([]byte, n)
+	if err := binary.Read(d.rdr, binary.LittleEndian, bits); err != nil {
+		panic(err)
+	}
+
+	d.ln = string(bits)
+	d.nextOffset += n + int64(binary.Size(n))
 }
 
 // ReadEntry returns the current entry.

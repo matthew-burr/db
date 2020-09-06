@@ -1,7 +1,7 @@
 package file
 
 import (
-	"bufio"
+	"encoding/binary"
 	"io"
 	"os"
 )
@@ -59,12 +59,19 @@ func (d *DBFile) CurrentOffset() int64 {
 func (d *DBFile) WriteEntry(entry DBFileEntry) DBFileEntry {
 	offset := d.CurrentOffset()
 
-	count, err := entry.WriteTo(d.File)
-	if err != nil {
+	bits := []byte(entry.String())
+
+	var n int64 = int64(binary.Size(bits))
+	if err := binary.Write(d.File, binary.LittleEndian, n); err != nil {
 		panic(err)
 	}
-	d.Offset += count
 
+	n += int64(binary.Size(n))
+	if err := binary.Write(d.File, binary.LittleEndian, bits); err != nil {
+		panic(err)
+	}
+
+	d.Offset += int64(n)
 	return entry.At(offset)
 }
 
@@ -73,12 +80,17 @@ func (d *DBFile) ReadRawEntry(offset int64) string {
 	d.moveToOffset(offset)
 	defer d.moveToEnd()
 
-	scn := bufio.NewScanner(d)
-	if scn.Scan() {
-		return scn.Text()
+	var n int64
+	if err := binary.Read(d.File, binary.LittleEndian, &n); err != nil {
+		return ""
 	}
 
-	return ""
+	bits := make([]byte, n)
+	if err := binary.Read(d.File, binary.LittleEndian, bits); err != nil {
+		panic(err)
+	}
+
+	return string(bits)
 }
 
 // ReadEntry retrieves the DBFileEntry at the given offset.
