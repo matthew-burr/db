@@ -49,3 +49,24 @@ func TestParseEntry_SetsValue(t *testing.T) {
 	entry := file.ParseEntry("key:value")
 	assert.Equal(t, "value", entry.Value())
 }
+
+func TestEquals(t *testing.T) {
+	tt := []struct {
+		name string
+		arg  file.DBFileEntry
+		want bool
+	}{
+		{"Identical", file.NewEntry("test", file.Value("entry"), file.Deleted), true},
+		{"Different deleted", file.NewEntry("test", file.Value("entry")), false},
+		{"Different key", file.NewEntry("other", file.Value("entry"), file.Deleted), false},
+		{"Different value", file.NewEntry("test", file.Value("foo"), file.Deleted), false},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			got := file.NewEntry("test", file.Value("entry"), file.Deleted).Equals(tc.arg)
+			assert.Equal(t, tc.want, got)
+
+		})
+	}
+}

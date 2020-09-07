@@ -77,3 +77,8 @@ func (d DBFileEntry) WriteTo(w io.Writer) (int64, error) {
 func (d DBFileEntry) String() string {
 	return fmt.Sprintf("%s:%s", d.key, d.value)
 }
+
+// Equals compares this DBFileEntry to another and returns true if they have the same content.
+func (d DBFileEntry) Equals(other DBFileEntry) bool {
+	return d.deleted == other.deleted && d.key == other.key && d.value == other.value
+}
