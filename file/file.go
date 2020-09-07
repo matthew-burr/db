@@ -10,27 +10,28 @@ import (
 // It provides key information to help the DB keep track of locations in the file.
 type DBFile struct {
 	File   *os.File
-	Offset int64 // The current offset in the file.
 	Index  DBIndex
+	Offset int64 // The current offset in the file.
 }
 
 // Open opens a file for use as a DBFile.
 func Open(filepath string) *DBFile {
+	file := openFile(filepath)
+
+	d := &DBFile{
+		File:  file,
+		Index: BuildIndex(file),
+	}
+
+	d.moveToEnd()
+	return d
+}
+
+func openFile(filepath string) *os.File {
 	file, err := os.OpenFile(filepath, os.O_RDWR|os.O_SYNC|os.O_CREATE, 0666)
 	if err != nil {
 		panic(err)
 	}
-	return &DBFile{
-		File:   file,
-		Offset: int64(0),
-		Index:  BuildIndex(file),
-	}
-}
-
-// Clone creates a copy of the DBFile with a new file pointer.
-// The cloned copy is positioned at the beginning of the file.
-func (d *DBFile) Clone() io.Reader {
-	file, _ := os.OpenFile(d.File.Name(), os.O_RDWR|os.O_SYNC|os.O_CREATE, 0666)
 	return file
 }
 
@@ -60,20 +61,22 @@ func (d *DBFile) CurrentOffset() int64 {
 // WriteEntry writes a new key value pair to the DBFile.
 // It returns the entry updated with the entry's offset
 func (d *DBFile) WriteEntry(entry DBFileEntry) DBFileEntry {
-	offset := d.CurrentOffset()
-
 	n, err := EncodeTo(d.File, entry)
 	if err != nil {
 		panic(err)
 	}
-
+	d.Index[entry.Key()] = d.CurrentOffset()
 	d.Offset += int64(n)
-
-	return entry.At(offset)
+	return entry
 }
 
 // ReadEntry retrieves the DBFileEntry at the given offset.
-func (d *DBFile) ReadEntry(offset int64) DBFileEntry {
+func (d *DBFile) ReadEntry(key string) DBFileEntry {
+	offset, found := d.Index[key]
+	if !found {
+		return NewEntry(key, "<not found>")
+	}
+
 	d.moveToOffset(offset)
 	defer d.moveToEnd()
 
@@ -82,17 +85,8 @@ func (d *DBFile) ReadEntry(offset int64) DBFileEntry {
 	if err != nil {
 		panic(err)
 	}
+
 	return entry
-}
-
-// Read implements the io.Reader interface for reading the file.
-func (d *DBFile) Read(b []byte) (n int, err error) {
-	return d.File.Read(b)
-}
-
-// Write implements the io.Writer interface for writing to the file.
-func (d *DBFile) Write(b []byte) (n int, err error) {
-	return d.File.Write(b)
 }
 
 // Close closes the file.
@@ -100,22 +94,11 @@ func (d *DBFile) Close() {
 	d.File.Close()
 }
 
-func (d *DBFile) ReadKey(key string, value *string) {
-	if offset, found := d.Index[key]; found {
-		k, v := d.ReadEntry(offset).Tuple()
-		if k != key {
-			panic(fmt.Errorf("index corrupt"))
-		}
-
-		*value = v
-	}
-}
-
-func (d *DBFile) WriteTuple(key, value string) {
-	entry := d.WriteEntry(NewEntry(key, value))
-	d.Index.Update(entry)
-}
-
 func (d *DBFile) Reindex() {
-	d.Index = BuildIndex(d)
+	file := openFile(d.File.Name())
+	d.Index = BuildIndex(file)
+}
+
+func (d *DBFile) Debug() {
+	fmt.Printf("current offset %d\n", d.CurrentOffset())
 }

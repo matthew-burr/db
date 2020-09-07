@@ -2,11 +2,6 @@ package file
 
 import "io"
 
-type DBIndexRecord interface {
-	Key() string
-	Offset() int64
-}
-
 // A DBIndex is a map of keys to their offset in the DBFile.
 type DBIndex map[string]int64
 
@@ -20,8 +15,4 @@ func BuildIndex(f io.Reader) DBIndex {
 	}
 
 	return index
-}
-
-func (d DBIndex) Update(record DBIndexRecord) {
-	d[record.Key()] = record.Offset()
 }
