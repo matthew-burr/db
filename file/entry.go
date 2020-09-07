@@ -8,6 +8,7 @@ import (
 
 // A DBFileEntry is a single entry in a DBFile.
 type DBFileEntry struct {
+	deleted    bool
 	key, value string
 }
 
@@ -41,6 +42,12 @@ func (d DBFileEntry) Value() string {
 // Tuple returns the DBFileEntry's key and value as a key/value pair.
 func (d DBFileEntry) Tuple() (key, value string) {
 	return d.key, d.value
+}
+
+// Delete marks an entry as deleted.
+func (d DBFileEntry) Delete() DBFileEntry {
+	d.deleted = true
+	return d
 }
 
 // WriteTo writes the DBFileEntry in a key:value format to a writer.

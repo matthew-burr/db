@@ -9,35 +9,58 @@ import (
 // format.
 type EncoderFunc func(string) (int, error)
 
+// A TombstonerFunc is the signature for a focution that can be used to mark a record as tombstoned.
+type TombstonerFunc func(bool) (int, error)
+
 // An Encoder encodes DBFileEntry objects.
 type Encoder struct {
 	enc EncoderFunc
+	tmb TombstonerFunc
 }
 
 // NewEncoder creates a new Encoder that will write entries to a writer.
 func NewEncoder(w io.Writer) *Encoder {
 	return &Encoder{
 		enc: BuildEncoderFunc(w),
+		tmb: BuildTombstonerFunc(w),
 	}
 }
 
 // Encode encodes a DBFileEntry to a binary format and writes it to the Encoder's underlying writer.
 func (e *Encoder) Encode(entry DBFileEntry) (n int, err error) {
 	var (
-		nK, nV int
+		nT, nK, nV int
 	)
+
+	nT, err = e.tmb(entry.deleted)
+	if err != nil {
+		return 0, err
+	}
 
 	nK, err = e.enc(entry.key)
 	if err != nil {
 		return 0, err
 	}
 
-	nV, err = e.enc(entry.value)
-	if err != nil {
-		return 0, err
+	if !entry.deleted {
+		nV, err = e.enc(entry.value)
+		if err != nil {
+			return 0, err
+		}
 	}
 
-	return nK + nV, nil
+	return nT + nK + nV, nil
+}
+
+func BuildTombstonerFunc(w io.Writer) TombstonerFunc {
+	var err error
+	return func(tombstoned bool) (int, error) {
+		err = binary.Write(w, binary.BigEndian, tombstoned)
+		if err != nil {
+			return 0, err
+		}
+		return binary.Size(tombstoned), nil
+	}
 }
 
 // BuildEncoderFunc builds an EncoderFunc that will write to an io.Writer.
@@ -63,23 +86,7 @@ func BuildEncoderFunc(w io.Writer) EncoderFunc {
 
 // EncodeTo is a utility function that will encode a DBFileEntry and write it to an io.Writer.
 func EncodeTo(w io.Writer, d DBFileEntry) (int, error) {
-	enc := BuildEncoderFunc(w)
-	var (
-		nK, nV int
-		err    error
-	)
-
-	nK, err = enc(d.key)
-	if err != nil {
-		return 0, err
-	}
-
-	nV, err = enc(d.value)
-	if err != nil {
-		return 0, err
-	}
-
-	return nK + nV, nil
+	return NewEncoder(w).Encode(d)
 }
 
 // A DecoderFunc is the signature of a function that can read the binary format of a string into a
@@ -141,19 +148,5 @@ func BuildDecoderFunc(r io.Reader) DecoderFunc {
 
 // DecodeFrom will read a single DBFileEntry from an io.Reader.
 func DecodeFrom(r io.Reader, d *DBFileEntry) (int, error) {
-	dec := BuildDecoderFunc(r)
-	var (
-		nK, nV int
-		err    error
-	)
-	nK, err = dec(&d.key)
-	if err != nil {
-		return 0, err
-	}
-
-	nV, err = dec(&d.value)
-	if err != nil {
-		return 0, err
-	}
-	return nK + nV, nil
+	return NewDecoder(r).Decode(d)
 }

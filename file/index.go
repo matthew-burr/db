@@ -31,6 +31,7 @@ func BuildIndex(rdr io.Reader) DBIndex {
 	return index
 }
 
+// Debug prints information about the DBIndex and a particular entry in it to the provided writer.
 func (d DBIndex) Debug(w io.Writer, key string) {
 	offset, found := d[key]
 	if !found {
