@@ -1,6 +1,8 @@
 package filesystem
 
 import (
+	"io"
+
 	"github.com/matthew-burr/db/file"
 )
 
@@ -29,4 +31,8 @@ func (d *DBFileSystem) DeleteEntry(key string) file.DBFileEntry {
 
 func (d *DBFileSystem) Close() {
 	d.File.Close()
+}
+
+func (d *DBFileSystem) Debug(w io.Writer, key string) {
+	d.File.Debug(w, key)
 }
