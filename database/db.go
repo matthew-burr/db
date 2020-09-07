@@ -21,7 +21,7 @@ func Init(filepath string) DB {
 
 // Write adds or updates a database entry by writing the value to the key.
 func (d DB) Write(key, value string) DB {
-	d.DBFile.WriteEntry(file.NewEntry(key, value))
+	d.DBFile.WriteEntry(file.NewEntry(key, file.Value(value)))
 	return d
 }
 

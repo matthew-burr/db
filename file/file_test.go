@@ -20,7 +20,7 @@ func TestDeleteEntry_RemoveEntryFromIndex(t *testing.T) {
 	defer cleanup()
 
 	key := "test"
-	entry := file.NewEntry(key, "record")
+	entry := file.NewEntry(key, file.Value("record"))
 	d.Index.Update(entry, 0)
 	require.Contains(t, d.Index, key)
 
@@ -62,7 +62,16 @@ func TestWriteEntry_AddsEntryToIndex(t *testing.T) {
 	defer cleanup()
 
 	key := "test"
-	d.WriteEntry(file.NewEntry(key, "entry"))
+	d.WriteEntry(file.NewEntry(key, file.Value("entry")))
 	assert.Contains(t, d.Index, key)
 	assert.Equal(t, d.Index[key], int64(0))
+}
+
+func TestReadEntry_ReturnsNotFound(t *testing.T) {
+	d, cleanup := SetupFileTestDat()
+	defer cleanup()
+
+	entry := d.ReadEntry("foo")
+	assert.Equal(t, "foo", entry.Key())
+	assert.Equal(t, "<not found>", entry.Value())
 }

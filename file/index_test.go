@@ -49,7 +49,7 @@ func BenchmarkReindex(b *testing.B) {
 func BuildBigFile(size, count int, filepath string) *file.DBFile {
 	entry := file.NewEntry(
 		"test",
-		strings.Repeat("x", size),
+		file.Value(strings.Repeat("x", size)),
 	)
 
 	d := file.Open(filepath)
@@ -62,8 +62,8 @@ func BuildBigFile(size, count int, filepath string) *file.DBFile {
 
 func TestReindex_ExcludesDeletedRecords(t *testing.T) {
 	buf := new(bytes.Buffer)
-	file.EncodeTo(buf, file.NewEntry("deleted", "record").Delete())
-	file.EncodeTo(buf, file.NewEntry("not", "deleted"))
+	file.EncodeTo(buf, file.NewEntry("deleted", file.Value("record")).Delete())
+	file.EncodeTo(buf, file.NewEntry("not", file.Value("deleted")))
 
 	buf = bytes.NewBuffer(buf.Bytes())
 	got := file.BuildIndex(buf)
@@ -73,8 +73,8 @@ func TestReindex_ExcludesDeletedRecords(t *testing.T) {
 
 func TestReindex_RemovesDeletedRecords(t *testing.T) {
 	buf := new(bytes.Buffer)
-	file.EncodeTo(buf, file.NewEntry("delete", "me"))
-	file.EncodeTo(buf, file.NewEntry("delete", "me").Delete())
+	file.EncodeTo(buf, file.NewEntry("delete", file.Value("me")))
+	file.EncodeTo(buf, file.NewEntry("delete", file.Value("me")).Delete())
 
 	buf = bytes.NewBuffer(buf.Bytes())
 	got := file.BuildIndex(buf)
@@ -90,21 +90,21 @@ func TestRemove_RemovesAnItem(t *testing.T) {
 
 func TestUpdate_AddsAKey(t *testing.T) {
 	idx := make(file.DBIndex)
-	entry := file.NewEntry("test", "entry")
+	entry := file.NewEntry("test", file.Value("entry"))
 	idx.Update(entry, int64(0))
 	assert.Contains(t, idx, "test")
 }
 
 func TestUpdate_UpdatesAnOffset(t *testing.T) {
 	idx := make(file.DBIndex)
-	idx.Update(file.NewEntry("test", "me"), int64(0))
-	idx.Update(file.NewEntry("test", "this"), int64(1))
+	idx.Update(file.NewEntry("test", file.Value("me")), int64(0))
+	idx.Update(file.NewEntry("test", file.Value("this")), int64(1))
 	assert.Equal(t, int64(1), idx["test"])
 }
 
 func TestUpdate_RemovesDeletedItem(t *testing.T) {
 	idx := make(file.DBIndex)
 	idx["test"] = int64(0)
-	idx.Update(file.NewEntry("test", "delete").Delete(), int64(1))
+	idx.Update(file.NewEntry("test", file.Value("delete")).Delete(), int64(1))
 	assert.NotContains(t, idx, "test")
 }

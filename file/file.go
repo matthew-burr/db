@@ -71,21 +71,17 @@ func (d *DBFile) WriteEntry(entry DBFileEntry) DBFileEntry {
 	return entry
 }
 
-func (d *DBFile) writeTombstone(key string) DBFileEntry {
-	return d.WriteEntry(NewEntry(key, "").Delete())
-}
-
 // DeleteEntry deletes the entry with the given key from the file.
 // It returns a DBFileEntry object with the deleted entry.
 func (d *DBFile) DeleteEntry(key string) DBFileEntry {
-	return d.WriteEntry(NewEntry(key, "").Delete())
+	return d.WriteEntry(NewEntry(key, Deleted))
 }
 
 // ReadEntry retrieves the DBFileEntry at the given offset.
 func (d *DBFile) ReadEntry(key string) DBFileEntry {
 	offset, found := d.Index[key]
 	if !found {
-		return NewEntry(key, "<not found>")
+		return NewEntry(key, Value("<not found>"))
 	}
 
 	d.moveToOffset(offset)

@@ -6,6 +6,19 @@ import (
 	"strings"
 )
 
+// An EntryOption is an optional setting you may provide to a DBFileEntry.
+type EntryOption func(*DBFileEntry)
+
+func Value(s string) EntryOption {
+	return func(d *DBFileEntry) {
+		d.value = s
+	}
+}
+
+func Deleted(d *DBFileEntry) {
+	d.deleted = true
+}
+
 // A DBFileEntry is a single entry in a DBFile.
 type DBFileEntry struct {
 	deleted    bool
@@ -13,11 +26,14 @@ type DBFileEntry struct {
 }
 
 // NewEntry creates a new DBFileEntry with the given key and value.
-func NewEntry(key, value string) DBFileEntry {
-	return DBFileEntry{
-		key:   key,
-		value: value,
+func NewEntry(key string, option ...EntryOption) DBFileEntry {
+	d := DBFileEntry{
+		key: key,
 	}
+	for _, o := range option {
+		o(&d)
+	}
+	return d
 }
 
 // ParseEntry returns a new DBFileEntry from a string of the format key:value.
@@ -26,7 +42,7 @@ func ParseEntry(entry string) DBFileEntry {
 	if len(parts) != 2 {
 		panic(fmt.Errorf("corrupt file"))
 	}
-	return NewEntry(parts[0], parts[1])
+	return NewEntry(parts[0], Value(parts[1]))
 }
 
 // Key returns the DBFileEntry's key.

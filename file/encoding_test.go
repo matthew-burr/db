@@ -13,14 +13,14 @@ import (
 
 func TestEncodeTo(t *testing.T) {
 	buf := new(bytes.Buffer)
-	entry := NewEntry("my_key", "my_value")
+	entry := NewEntry("my_key", Value("my_value"))
 	n, _ := EncodeTo(buf, entry)
 	assert.Equal(t, len(buf.Bytes()), n)
 }
 
 func TestEncode_SetsDeletedBit(t *testing.T) {
 	buf := new(bytes.Buffer)
-	e := NewEntry("my_key", "my_value").Delete()
+	e := NewEntry("my_key", Value("my_value")).Delete()
 	EncodeTo(buf, e)
 
 	buf = bytes.NewBuffer(buf.Bytes())
@@ -32,7 +32,7 @@ func TestEncode_SetsDeletedBit(t *testing.T) {
 
 func TestEncode_OnlyAddsKey(t *testing.T) {
 	buf := new(bytes.Buffer)
-	EncodeTo(buf, NewEntry("my_key", "my_value").Delete())
+	EncodeTo(buf, NewEntry("my_key", Value("my_value")).Delete())
 
 	buf = bytes.NewBuffer(buf.Bytes())
 	var (
@@ -54,7 +54,7 @@ func TestEncode_OnlyAddsKey(t *testing.T) {
 
 func TestDecodeFrom(t *testing.T) {
 	buf := new(bytes.Buffer)
-	wantE := NewEntry("my_key", "my_value")
+	wantE := NewEntry("my_key", Value("my_value"))
 	wantN, _ := EncodeTo(buf, wantE)
 
 	buf = bytes.NewBuffer(buf.Bytes())
@@ -87,8 +87,8 @@ func TestDecode_SetsKeyButNotValue(t *testing.T) {
 		deleted bool
 		want    DBFileEntry
 	}{
-		{"Value filled if not deleted", false, NewEntry("my_key", "my_value")},
-		{"Value empty if deleted", true, NewEntry("my_key", "").Delete()},
+		{"Value filled if not deleted", false, NewEntry("my_key", Value("my_value"))},
+		{"Value empty if deleted", true, NewEntry("my_key", Deleted)},
 	}
 
 	for _, tc := range tt {
