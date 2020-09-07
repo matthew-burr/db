@@ -65,3 +65,52 @@ func TestDecodeFrom(t *testing.T) {
 	assert.Equal(t, wantE.Key(), gotE.Key())
 	assert.Equal(t, wantE.Value(), gotE.Value())
 }
+
+func TestDecode_ReadsDeletedBit(t *testing.T) {
+	buf := new(bytes.Buffer)
+	sEnc, bEnc := BuildStringEncoderFunc(buf), BuildBoolEncoderFunc(buf)
+	bEnc(true)
+	sEnc("my_key")
+
+	buf = bytes.NewBuffer(buf.Bytes())
+	entry := DBFileEntry{}
+	_, err := DecodeFrom(buf, &entry)
+	require.NoError(t, err)
+
+	assert.True(t, entry.Deleted())
+}
+
+func TestDecode_SetsKeyButNotValue(t *testing.T) {
+
+	tt := []struct {
+		name    string
+		deleted bool
+		want    DBFileEntry
+	}{
+		{"Value filled if not deleted", false, NewEntry("my_key", "my_value")},
+		{"Value empty if deleted", true, NewEntry("my_key", "").Delete()},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			buf := new(bytes.Buffer)
+			sEnc, bEnc := BuildStringEncoderFunc(buf), BuildBoolEncoderFunc(buf)
+
+			bEnc(tc.deleted)
+			sEnc("my_key")
+			// In reality, we wouldn't set the value for a deleted record, but for
+			// purposes of this test, we want to ensure that it is skipped over for
+			// deleted records.
+			sEnc("my_value")
+
+			buf = bytes.NewBuffer(buf.Bytes())
+			var got DBFileEntry
+			_, err := DecodeFrom(buf, &got)
+			require.NoError(t, err)
+
+			assert.Equal(t, tc.want.Deleted(), got.Deleted())
+			assert.Equal(t, tc.want.Key(), got.Key())
+			assert.Equal(t, tc.want.Value(), got.Value())
+		})
+	}
+}

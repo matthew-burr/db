@@ -95,34 +95,63 @@ func EncodeTo(w io.Writer, d DBFileEntry) (int, error) {
 // string.
 type StringDecoderFunc func(s *string) (int, error)
 
+// A BoolDecoderFunc is the signature of a function that can read the binary format of a bool into a bool.
+type BoolDecoderFunc func(b *bool) (int, error)
+
 // A Decoder can decode DBFileEntry objects from a reader.
 type Decoder struct {
 	dec StringDecoderFunc
+	tmb BoolDecoderFunc
 }
 
 // NewDecoder creates a new Decoder that will read from an io.Reader.
 func NewDecoder(r io.Reader) *Decoder {
 	return &Decoder{
 		dec: BuildStringDecoderFunc(r),
+		tmb: BuildBoolDecoderFunc(r),
 	}
 }
 
 // Decode reads binary data from its io.Reader into a DBFileEntry.
 func (d *Decoder) Decode(entry *DBFileEntry) (int, error) {
 	var (
-		nK, nV int
-		err    error
+		nT, nK, nV int
+		err        error
 	)
+
+	nT, err = d.tmb(&entry.deleted)
+	if err != nil {
+		return 0, err
+	}
+
 	nK, err = d.dec(&entry.key)
 	if err != nil {
 		return 0, err
 	}
 
-	nV, err = d.dec(&entry.value)
-	if err != nil {
-		return 0, err
+	// Tombstoned records have only a key and a deleted bit.
+	if !entry.deleted {
+		nV, err = d.dec(&entry.value)
+		if err != nil {
+			return 0, err
+		}
 	}
-	return nK + nV, nil
+
+	return nT + nK + nV, nil
+}
+
+// BuildBoolDecoderFunc creates a new BoolDecoderFunc that will read from the specified io.Reader.
+func BuildBoolDecoderFunc(r io.Reader) BoolDecoderFunc {
+	var err error
+
+	return func(b *bool) (int, error) {
+		err = binary.Read(r, binary.BigEndian, b)
+		if err != nil {
+			return 0, err
+		}
+
+		return binary.Size(true), nil
+	}
 }
 
 // BuildStringDecoderFunc builds a DecoderFunc that will read from the specified io.Reader.

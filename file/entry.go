@@ -44,6 +44,11 @@ func (d DBFileEntry) Tuple() (key, value string) {
 	return d.key, d.value
 }
 
+// Deleted returns a bool indicating whether or not the record has been deleted.
+func (d DBFileEntry) Deleted() bool {
+	return d.deleted
+}
+
 // Delete marks an entry as deleted.
 func (d DBFileEntry) Delete() DBFileEntry {
 	d.deleted = true
