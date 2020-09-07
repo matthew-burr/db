@@ -63,7 +63,7 @@ func displayInterface(db *database.DB) {
 			k := cmdParts[1]
 			db.Debug(k)
 		case "reindex":
-			db.DBFile.Reindex()
+			db.DBFile.File.Reindex()
 		default:
 			fmt.Println(`Command Help:
   q(uit)                : Quits the application

@@ -9,14 +9,14 @@ import (
 
 // A DB is a simple key, value database.
 type DB struct {
-	DBFile *file.DBFile
+	DBFile *filesystem.DBFileSystem
 }
 
 // Init initializes the database from a file. Once initialized, you can start querying the database.
 func Init(dbName string) *DB {
 	fs := filesystem.Init(dbName)
 	return &DB{
-		DBFile: fs.File,
+		DBFile: fs,
 	}
 }
 
@@ -45,5 +45,5 @@ func (d *DB) Shutdown() {
 // Debug provides some basic ability to check the validity of the database structure. Given a key, it will
 // determine the offset for that key, insure it's a valid offset, and return what data it finds at that offset.
 func (d *DB) Debug(key string) {
-	d.DBFile.Debug(os.Stdout, key)
+	d.DBFile.File.Debug(os.Stdout, key)
 }
