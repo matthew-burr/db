@@ -66,9 +66,19 @@ func (d *DBFile) WriteEntry(entry DBFileEntry) DBFileEntry {
 	if err != nil {
 		panic(err)
 	}
-	d.Index[entry.key] = d.CurrentOffset()
+	d.Index.Update(entry, d.CurrentOffset())
 	d.Offset += int64(n)
 	return entry
+}
+
+func (d *DBFile) writeTombstone(key string) DBFileEntry {
+	return d.WriteEntry(NewEntry(key, "").Delete())
+}
+
+// DeleteEntry deletes the entry with the given key from the file.
+// It returns a DBFileEntry object with the deleted entry.
+func (d *DBFile) DeleteEntry(key string) DBFileEntry {
+	return d.WriteEntry(NewEntry(key, "").Delete())
 }
 
 // ReadEntry retrieves the DBFileEntry at the given offset.
