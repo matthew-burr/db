@@ -5,24 +5,24 @@ import (
 	"io"
 )
 
-// An EncoderFunc is the signature for a function that can be used to encode a string into its binary
+// An StringEncoderFunc is the signature for a function that can be used to encode a string into its binary
 // format.
-type EncoderFunc func(string) (int, error)
+type StringEncoderFunc func(string) (int, error)
 
-// A TombstonerFunc is the signature for a focution that can be used to mark a record as tombstoned.
-type TombstonerFunc func(bool) (int, error)
+// A BoolEncoderFunc is the signature for a focution that can be used to mark a record as tombstoned.
+type BoolEncoderFunc func(bool) (int, error)
 
 // An Encoder encodes DBFileEntry objects.
 type Encoder struct {
-	enc EncoderFunc
-	tmb TombstonerFunc
+	enc StringEncoderFunc
+	tmb BoolEncoderFunc
 }
 
 // NewEncoder creates a new Encoder that will write entries to a writer.
 func NewEncoder(w io.Writer) *Encoder {
 	return &Encoder{
-		enc: BuildEncoderFunc(w),
-		tmb: BuildTombstonerFunc(w),
+		enc: BuildStringEncoderFunc(w),
+		tmb: BuildBoolEncoderFunc(w),
 	}
 }
 
@@ -42,6 +42,7 @@ func (e *Encoder) Encode(entry DBFileEntry) (n int, err error) {
 		return 0, err
 	}
 
+	// If the record has been deleted, then we don't save the value since that would be a waste of space.
 	if !entry.deleted {
 		nV, err = e.enc(entry.value)
 		if err != nil {
@@ -52,19 +53,20 @@ func (e *Encoder) Encode(entry DBFileEntry) (n int, err error) {
 	return nT + nK + nV, nil
 }
 
-func BuildTombstonerFunc(w io.Writer) TombstonerFunc {
+// BuildBoolEncoderFunc creates a TombstonerFunc that will write to a specified io.Writer.
+func BuildBoolEncoderFunc(w io.Writer) BoolEncoderFunc {
 	var err error
-	return func(tombstoned bool) (int, error) {
-		err = binary.Write(w, binary.BigEndian, tombstoned)
+	return func(b bool) (int, error) {
+		err = binary.Write(w, binary.BigEndian, b)
 		if err != nil {
 			return 0, err
 		}
-		return binary.Size(tombstoned), nil
+		return binary.Size(b), nil
 	}
 }
 
-// BuildEncoderFunc builds an EncoderFunc that will write to an io.Writer.
-func BuildEncoderFunc(w io.Writer) EncoderFunc {
+// BuildStringEncoderFunc builds an EncoderFunc that will write to an io.Writer.
+func BuildStringEncoderFunc(w io.Writer) StringEncoderFunc {
 	var err error
 	return func(s string) (int, error) {
 		b := []byte(s)
@@ -89,19 +91,19 @@ func EncodeTo(w io.Writer, d DBFileEntry) (int, error) {
 	return NewEncoder(w).Encode(d)
 }
 
-// A DecoderFunc is the signature of a function that can read the binary format of a string into a
+// A StringDecoderFunc is the signature of a function that can read the binary format of a string into a
 // string.
-type DecoderFunc func(s *string) (int, error)
+type StringDecoderFunc func(s *string) (int, error)
 
 // A Decoder can decode DBFileEntry objects from a reader.
 type Decoder struct {
-	dec DecoderFunc
+	dec StringDecoderFunc
 }
 
 // NewDecoder creates a new Decoder that will read from an io.Reader.
 func NewDecoder(r io.Reader) *Decoder {
 	return &Decoder{
-		dec: BuildDecoderFunc(r),
+		dec: BuildStringDecoderFunc(r),
 	}
 }
 
@@ -123,8 +125,8 @@ func (d *Decoder) Decode(entry *DBFileEntry) (int, error) {
 	return nK + nV, nil
 }
 
-// BuildDecoderFunc builds a DecoderFunc that will read from the specified io.Reader.
-func BuildDecoderFunc(r io.Reader) DecoderFunc {
+// BuildStringDecoderFunc builds a DecoderFunc that will read from the specified io.Reader.
+func BuildStringDecoderFunc(r io.Reader) StringDecoderFunc {
 	var err error
 	var n int16
 	var nSize = binary.Size(n)

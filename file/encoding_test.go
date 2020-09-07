@@ -18,21 +18,7 @@ func TestEncodeTo(t *testing.T) {
 	assert.Equal(t, len(buf.Bytes()), n)
 }
 
-func TestDecodeFrom(t *testing.T) {
-	buf := new(bytes.Buffer)
-	wantE := NewEntry("my_key", "my_value")
-	wantN, _ := EncodeTo(buf, wantE)
-
-	buf = bytes.NewBuffer(buf.Bytes())
-	gotE := DBFileEntry{}
-	gotN, _ := DecodeFrom(buf, &gotE)
-
-	assert.Equal(t, wantN, gotN)
-	assert.Equal(t, wantE.Key(), gotE.Key())
-	assert.Equal(t, wantE.Value(), gotE.Value())
-}
-
-func TestTombstone_SetsDeletedBit(t *testing.T) {
+func TestEncode_SetsDeletedBit(t *testing.T) {
 	buf := new(bytes.Buffer)
 	e := NewEntry("my_key", "my_value").Delete()
 	EncodeTo(buf, e)
@@ -44,7 +30,7 @@ func TestTombstone_SetsDeletedBit(t *testing.T) {
 	assert.True(t, deleted)
 }
 
-func TestTombstone_OnlyAddsKey(t *testing.T) {
+func TestEncode_OnlyAddsKey(t *testing.T) {
 	buf := new(bytes.Buffer)
 	EncodeTo(buf, NewEntry("my_key", "my_value").Delete())
 
@@ -66,15 +52,16 @@ func TestTombstone_OnlyAddsKey(t *testing.T) {
 	assert.Equal(t, err, io.EOF)
 }
 
-func TestTombstone_IgnoresDeletedRecord(t *testing.T) {
+func TestDecodeFrom(t *testing.T) {
 	buf := new(bytes.Buffer)
-	e := NewEntry("my_key", "my_value").Delete()
-	EncodeTo(buf, e)
+	wantE := NewEntry("my_key", "my_value")
+	wantN, _ := EncodeTo(buf, wantE)
 
 	buf = bytes.NewBuffer(buf.Bytes())
-	e = DBFileEntry{}
-	_, err := DecodeFrom(buf, &e)
-	assert.Equal(t, io.EOF, err)
-	assert.NotEqual(t, "my_key", e.Key())
-	assert.NotEqual(t, "my_value", e.Value())
+	gotE := DBFileEntry{}
+	gotN, _ := DecodeFrom(buf, &gotE)
+
+	assert.Equal(t, wantN, gotN)
+	assert.Equal(t, wantE.Key(), gotE.Key())
+	assert.Equal(t, wantE.Value(), gotE.Value())
 }
