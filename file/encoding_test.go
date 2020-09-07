@@ -11,18 +11,18 @@ import (
 func TestEncodeTo(t *testing.T) {
 	buf := new(bytes.Buffer)
 	entry := NewEntry("my_key", "my_value")
-	n := EncodeTo(buf, entry)
+	n, _ := EncodeTo(buf, entry)
 	assert.Equal(t, len(buf.Bytes()), n)
 }
 
 func TestDecodeFrom(t *testing.T) {
 	buf := new(bytes.Buffer)
 	wantE := NewEntry("my_key", "my_value")
-	wantN := EncodeTo(buf, wantE)
+	wantN, _ := EncodeTo(buf, wantE)
 
 	buf = bytes.NewBuffer(buf.Bytes())
 	gotE := DBFileEntry{}
-	gotN := DecodeFrom(buf, &gotE)
+	gotN, _ := DecodeFrom(buf, &gotE)
 
 	assert.Equal(t, wantN, gotN)
 	assert.Equal(t, wantE.Key(), gotE.Key())

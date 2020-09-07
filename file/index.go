@@ -1,6 +1,6 @@
-package database
+package file
 
-import "github.com/matthew-burr/db/file"
+import "io"
 
 type DBIndexRecord interface {
 	Key() string
@@ -11,10 +11,10 @@ type DBIndexRecord interface {
 type DBIndex map[string]int64
 
 // BuildIndex builds a new index of a DBFile.
-func BuildIndex(f file.Cloner) DBIndex {
+func BuildIndex(f io.Reader) DBIndex {
 	index := make(DBIndex)
 
-	for buf := file.Iterator(f); !buf.Done(); buf.MoveNext() {
+	for buf := Iterator(f); !buf.Done(); buf.MoveNext() {
 		k, _ := buf.ReadEntry().Tuple()
 		index[k] = buf.Offset()
 	}

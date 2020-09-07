@@ -1,6 +1,7 @@
 package file
 
 import (
+	"fmt"
 	"io"
 	"os"
 )
@@ -10,6 +11,7 @@ import (
 type DBFile struct {
 	File   *os.File
 	Offset int64 // The current offset in the file.
+	Index  DBIndex
 }
 
 // Open opens a file for use as a DBFile.
@@ -21,13 +23,15 @@ func Open(filepath string) *DBFile {
 	return &DBFile{
 		File:   file,
 		Offset: int64(0),
+		Index:  BuildIndex(file),
 	}
 }
 
 // Clone creates a copy of the DBFile with a new file pointer.
 // The cloned copy is positioned at the beginning of the file.
 func (d *DBFile) Clone() io.Reader {
-	return Open(d.File.Name())
+	file, _ := os.OpenFile(d.File.Name(), os.O_RDWR|os.O_SYNC|os.O_CREATE, 0666)
+	return file
 }
 
 // moveToEnd moves the DBFile's offset to the end of the file.
@@ -94,4 +98,24 @@ func (d *DBFile) Write(b []byte) (n int, err error) {
 // Close closes the file.
 func (d *DBFile) Close() {
 	d.File.Close()
+}
+
+func (d *DBFile) ReadKey(key string, value *string) {
+	if offset, found := d.Index[key]; found {
+		k, v := d.ReadEntry(offset).Tuple()
+		if k != key {
+			panic(fmt.Errorf("index corrupt"))
+		}
+
+		*value = v
+	}
+}
+
+func (d *DBFile) WriteTuple(key, value string) {
+	entry := d.WriteEntry(NewEntry(key, value))
+	d.Index.Update(entry)
+}
+
+func (d *DBFile) Reindex() {
+	d.Index = BuildIndex(d)
 }

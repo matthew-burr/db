@@ -11,15 +11,10 @@ type DBFileIterator struct {
 	entry              DBFileEntry
 }
 
-// A Cloner is an object that provides a method to produce an io.Reader as a Clone of an existing io.Reader.
-type Cloner interface {
-	Clone() io.Reader
-}
-
 // Iterator creates a new DBFileIterator.
-func Iterator(file Cloner) *DBFileIterator {
+func Iterator(rdr io.Reader) *DBFileIterator {
 	d := &DBFileIterator{
-		rdr: file.Clone(),
+		rdr: rdr,
 	}
 	d.MoveNext()
 	return d
@@ -32,12 +27,11 @@ func (d *DBFileIterator) MoveNext() {
 	entry := DBFileEntry{}
 	n, err := DecodeFrom(d.rdr, &entry)
 	if err != nil {
-		if err == io.EOF {
-			d.offset = -1
-			d.nextOffset = -1
-			return
-		}
-		panic(err)
+		// if err == io.EOF {
+		d.offset = -1
+		d.nextOffset = -1
+		return
+		// }
 	}
 
 	d.entry = entry
