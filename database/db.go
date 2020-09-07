@@ -34,6 +34,12 @@ func (d DB) Read(key string, value *string) DB {
 	return d
 }
 
+// Delete removes an entry from the database.
+func (d DB) Delete(key string) DB {
+	d.DBFile.DeleteEntry(key)
+	return d
+}
+
 // Shutdown closes the database and should always be executed before quitting the program.
 func (d DB) Shutdown() {
 	d.DBFile.Close()
