@@ -15,7 +15,7 @@ func main() {
 	displayInterface(db)
 }
 
-func displayInterface(db database.DB) {
+func displayInterface(db *database.DB) {
 	fmt.Print("> ")
 
 	listen := bufio.NewScanner(os.Stdin)
