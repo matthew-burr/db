@@ -8,7 +8,7 @@ import (
 
 // A DB is a simple key, value database.
 type DB struct {
-	*file.DBFile
+	DBFile *file.DBFile
 }
 
 // Init initializes the database from a file. Once initialized, you can start querying the database.
