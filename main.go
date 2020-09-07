@@ -44,16 +44,15 @@ func displayInterface(db *database.DB) {
 				fmt.Println("missing the key argument; try 'read <key>'.")
 				break
 			}
-			k, v := cmdParts[1], ""
-			db = db.Read(k, &v)
-			fmt.Printf("%s: %s\n", k, v)
+			entry := db.Read(cmdParts[1])
+			fmt.Printf("%s: %s\n", entry.Key(), entry.Value())
 		case "debug":
 			if len(cmdParts) < 2 {
 				fmt.Println("missing the key argument; try 'debug <key>'.")
 				break
 			}
 			k := cmdParts[1]
-			db = db.Debug(k)
+			db.Debug(k)
 		case "reindex":
 			db.DBFile.Reindex()
 		default:
