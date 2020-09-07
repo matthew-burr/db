@@ -46,6 +46,15 @@ func displayInterface(db *database.DB) {
 			}
 			entry := db.Read(cmdParts[1])
 			fmt.Printf("%s: %s\n", entry.Key(), entry.Value())
+		case "delete":
+			fallthrough
+		case "d":
+			if len(cmdParts) < 2 {
+				fmt.Println("missing the key argument; try 'delete <key>'.")
+				break
+			}
+			db.Delete(cmdParts[1])
+			fmt.Println("deleted")
 		case "debug":
 			if len(cmdParts) < 2 {
 				fmt.Println("missing the key argument; try 'debug <key>'.")
@@ -60,6 +69,7 @@ func displayInterface(db *database.DB) {
   q(uit)                : Quits the application
   w(rite) <key> <value> : Writes the value to the key
   r(ead) <key>          : Returns the value for key
+  d(elete) <key>        : Deletes the key from the database
   reindex               : Rebuilds the database index`)
 		}
 		fmt.Print("> ")
