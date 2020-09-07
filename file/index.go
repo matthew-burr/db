@@ -46,6 +46,27 @@ func (d DBIndex) Remove(key string) {
 	delete(d, key)
 }
 
+// Compress compresses the content of a reader into a writer and delivers an index of the newly compressed data.
+// It compresses content by writing only unique entries into the destination and removing any deleted entries.
+func (d DBIndex) Compress(w io.Writer, r io.ReadSeeker) DBIndex {
+	var (
+		dec, enc  = NewDecoder(r), NewEncoder(w)
+		n, offset = 0, int64(0)
+		idx       = make(DBIndex)
+		entry     DBFileEntry
+	)
+
+	for _, o := range d {
+		r.Seek(o, io.SeekStart)
+		dec.Decode(&entry)
+		n, _ = enc.Encode(entry)
+		idx.Update(entry, offset)
+		offset += int64(n)
+	}
+
+	return d
+}
+
 // Debug prints information about the DBIndex and a particular entry in it to the provided writer.
 func (d DBIndex) Debug(w io.Writer, key string) {
 	offset, found := d[key]

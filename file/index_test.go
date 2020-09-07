@@ -10,6 +10,7 @@ import (
 
 	"github.com/matthew-burr/db/file"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func MakeBufReaderFunc(filepath string, size int) func() io.Reader {
@@ -107,4 +108,85 @@ func TestUpdate_RemovesDeletedItem(t *testing.T) {
 	idx["test"] = int64(0)
 	idx.Update(file.NewEntry("test", file.Value("delete"), file.Deleted), int64(1))
 	assert.NotContains(t, idx, "test")
+}
+
+func SetupForCompressTests(entry ...file.DBFileEntry) (w *bytes.Buffer, r *bytes.Reader, idx file.DBIndex) {
+	buf := new(bytes.Buffer)
+	enc := file.NewEncoder(buf)
+
+	for _, e := range entry {
+		enc.Encode(e)
+	}
+
+	return new(bytes.Buffer), bytes.NewReader(buf.Bytes()), file.BuildIndex(bytes.NewBuffer(buf.Bytes()))
+}
+
+func CountEntry(r io.Reader, key string) (count int, lastEntry file.DBFileEntry) {
+	dec := file.NewDecoder(r)
+	var entry file.DBFileEntry
+	for _, err := dec.Decode(&entry); err != io.EOF; _, err = dec.Decode(&entry) {
+		if err != nil {
+			panic(err)
+		}
+		if entry.Key() == key {
+			count++
+			lastEntry = entry
+		}
+	}
+	return
+}
+
+func TestCompress_KeepsOnlyTheLastEntry(t *testing.T) {
+	w, r, idx := SetupForCompressTests(
+		file.NewEntry("test", file.Value("1")),
+		file.NewEntry("test", file.Value("2")),
+		file.NewEntry("test", file.Value("3")),
+	)
+
+	idx = idx.Compress(w, r)
+	gotCount, gotEntry := CountEntry(bytes.NewBuffer(w.Bytes()), "test")
+	wantCount, wantEntry := 1, file.NewEntry("test", file.Value("3"))
+	assert.Equal(t, wantCount, gotCount)
+	assert.True(t, gotEntry.Equals(wantEntry))
+}
+
+func TestCompress_KeepsAllEntriesFromIndex(t *testing.T) {
+	w, r, idx := SetupForCompressTests(
+		file.NewEntry("test", file.Value("1")),
+		file.NewEntry("other", file.Value("2")),
+	)
+
+	idx = idx.Compress(w, r)
+
+	for _, key := range []string{"test", "other"} {
+		got, _ := CountEntry(bytes.NewBuffer(w.Bytes()), key)
+		want := 1
+		assert.Equal(t, want, got)
+	}
+}
+
+func TestCompress_DoesNotAddDeletedItems(t *testing.T) {
+	w, r, idx := SetupForCompressTests(
+		file.NewEntry("test"),
+		file.NewEntry("test", file.Deleted),
+	)
+
+	idx = idx.Compress(w, r)
+
+	got, _ := CountEntry(bytes.NewBuffer(w.Bytes()), "test")
+	want := 0
+	assert.Equal(t, want, got)
+}
+
+func TestCompress_ReturnsIndex(t *testing.T) {
+	w, r, idx := SetupForCompressTests(
+		file.NewEntry("test"),
+		file.NewEntry("test"),
+	)
+	require.Greater(t, idx["test"], int64(0))
+
+	idx = idx.Compress(w, r)
+	got := idx["test"]
+	want := int64(0)
+	assert.Equal(t, want, got)
 }
