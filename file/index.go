@@ -49,22 +49,7 @@ func (d DBIndex) Remove(key string) {
 // Compress compresses the content of a reader into a writer and delivers an index of the newly compressed data.
 // It compresses content by writing only unique entries into the destination and removing any deleted entries.
 func (d DBIndex) Compress(w io.Writer, r io.ReadSeeker) DBIndex {
-	var (
-		dec, enc  = NewDecoder(r), NewEncoder(w)
-		n, offset = 0, int64(0)
-		idx       = make(DBIndex)
-		entry     DBFileEntry
-	)
-
-	for _, o := range d {
-		r.Seek(o, io.SeekStart)
-		dec.Decode(&entry)
-		n, _ = enc.Encode(entry)
-		idx.Update(entry, offset)
-		offset += int64(n)
-	}
-
-	return d
+	return newCompressor(w, r, d).Compress()
 }
 
 // Debug prints information about the DBIndex and a particular entry in it to the provided writer.
@@ -81,4 +66,45 @@ Key Found: %v
 Key Offset: %d
 Total Entry Count: %d
 `, found, offset, len(d))
+}
+
+// A compressor encapsulates the algorithm for a DBIndex to compress itself.
+type compressor struct {
+	r        io.ReadSeeker
+	dec      *Decoder
+	enc      *Encoder
+	src, dst DBIndex
+}
+
+func newCompressor(w io.Writer, r io.ReadSeeker, src DBIndex) *compressor {
+	return &compressor{
+		r:   r,
+		dec: NewDecoder(r),
+		enc: NewEncoder(w),
+		src: src,
+		dst: make(DBIndex),
+	}
+}
+
+func (c *compressor) ReadSourceEntry(entry *DBFileEntry, offset int64) {
+	c.r.Seek(offset, io.SeekStart)
+	c.dec.Decode(entry)
+}
+
+func (c *compressor) WriteDestEntry(entry DBFileEntry, offset *int64) {
+	n, _ := c.enc.Encode(entry)
+	c.dst.Update(entry, *offset)
+	*offset += int64(n)
+}
+
+func (c *compressor) Compress() DBIndex {
+	var (
+		entry      DBFileEntry
+		nextOffset int64
+	)
+	for _, offset := range c.src {
+		c.ReadSourceEntry(&entry, offset)
+		c.WriteDestEntry(entry, &nextOffset)
+	}
+	return c.dst
 }
