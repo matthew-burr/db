@@ -65,12 +65,6 @@ func (d DBFileEntry) Deleted() bool {
 	return d.deleted
 }
 
-// Delete marks an entry as deleted.
-func (d DBFileEntry) Delete() DBFileEntry {
-	d.deleted = true
-	return d
-}
-
 // WriteTo writes the DBFileEntry in a key:value format to a writer.
 func (d DBFileEntry) WriteTo(w io.Writer) (int64, error) {
 	n, err := fmt.Fprintf(w, "%s", d)

@@ -20,7 +20,7 @@ func TestEncodeTo(t *testing.T) {
 
 func TestEncode_SetsDeletedBit(t *testing.T) {
 	buf := new(bytes.Buffer)
-	e := NewEntry("my_key", Value("my_value")).Delete()
+	e := NewEntry("my_key", Value("my_value"), Deleted)
 	EncodeTo(buf, e)
 
 	buf = bytes.NewBuffer(buf.Bytes())
@@ -32,7 +32,7 @@ func TestEncode_SetsDeletedBit(t *testing.T) {
 
 func TestEncode_OnlyAddsKey(t *testing.T) {
 	buf := new(bytes.Buffer)
-	EncodeTo(buf, NewEntry("my_key", Value("my_value")).Delete())
+	EncodeTo(buf, NewEntry("my_key", Value("my_value"), Deleted))
 
 	buf = bytes.NewBuffer(buf.Bytes())
 	var (

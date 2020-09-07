@@ -62,7 +62,7 @@ func BuildBigFile(size, count int, filepath string) *file.DBFile {
 
 func TestReindex_ExcludesDeletedRecords(t *testing.T) {
 	buf := new(bytes.Buffer)
-	file.EncodeTo(buf, file.NewEntry("deleted", file.Value("record")).Delete())
+	file.EncodeTo(buf, file.NewEntry("deleted", file.Value("record"), file.Deleted))
 	file.EncodeTo(buf, file.NewEntry("not", file.Value("deleted")))
 
 	buf = bytes.NewBuffer(buf.Bytes())
@@ -74,7 +74,7 @@ func TestReindex_ExcludesDeletedRecords(t *testing.T) {
 func TestReindex_RemovesDeletedRecords(t *testing.T) {
 	buf := new(bytes.Buffer)
 	file.EncodeTo(buf, file.NewEntry("delete", file.Value("me")))
-	file.EncodeTo(buf, file.NewEntry("delete", file.Value("me")).Delete())
+	file.EncodeTo(buf, file.NewEntry("delete", file.Value("me"), file.Deleted))
 
 	buf = bytes.NewBuffer(buf.Bytes())
 	got := file.BuildIndex(buf)
@@ -105,6 +105,6 @@ func TestUpdate_UpdatesAnOffset(t *testing.T) {
 func TestUpdate_RemovesDeletedItem(t *testing.T) {
 	idx := make(file.DBIndex)
 	idx["test"] = int64(0)
-	idx.Update(file.NewEntry("test", file.Value("delete")).Delete(), int64(1))
+	idx.Update(file.NewEntry("test", file.Value("delete"), file.Deleted), int64(1))
 	assert.NotContains(t, idx, "test")
 }
