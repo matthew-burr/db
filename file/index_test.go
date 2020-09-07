@@ -2,12 +2,14 @@ package file_test
 
 import (
 	"bufio"
+	"bytes"
 	"io"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/matthew-burr/db/file"
+	"github.com/stretchr/testify/assert"
 )
 
 func MakeBufReaderFunc(filepath string, size int) func() io.Reader {
@@ -56,4 +58,53 @@ func BuildBigFile(size, count int, filepath string) *file.DBFile {
 	}
 
 	return d
+}
+
+func TestReindex_ExcludesDeletedRecords(t *testing.T) {
+	buf := new(bytes.Buffer)
+	file.EncodeTo(buf, file.NewEntry("deleted", "record").Delete())
+	file.EncodeTo(buf, file.NewEntry("not", "deleted"))
+
+	buf = bytes.NewBuffer(buf.Bytes())
+	got := file.BuildIndex(buf)
+	assert.NotContains(t, got, "deleted")
+	assert.Contains(t, got, "not")
+}
+
+func TestReindex_RemovesDeletedRecords(t *testing.T) {
+	buf := new(bytes.Buffer)
+	file.EncodeTo(buf, file.NewEntry("delete", "me"))
+	file.EncodeTo(buf, file.NewEntry("delete", "me").Delete())
+
+	buf = bytes.NewBuffer(buf.Bytes())
+	got := file.BuildIndex(buf)
+	assert.NotContains(t, got, "delete")
+}
+
+func TestRemove_RemovesAnItem(t *testing.T) {
+	idx := make(file.DBIndex)
+	idx["test"] = 0
+	idx.Remove("test")
+	assert.NotContains(t, idx, "test")
+}
+
+func TestUpdate_AddsAKey(t *testing.T) {
+	idx := make(file.DBIndex)
+	entry := file.NewEntry("test", "entry")
+	idx.Update(entry, int64(0))
+	assert.Contains(t, idx, "test")
+}
+
+func TestUpdate_UpdatesAnOffset(t *testing.T) {
+	idx := make(file.DBIndex)
+	idx.Update(file.NewEntry("test", "me"), int64(0))
+	idx.Update(file.NewEntry("test", "this"), int64(1))
+	assert.Equal(t, int64(1), idx["test"])
+}
+
+func TestUpdate_RemovesDeletedItem(t *testing.T) {
+	idx := make(file.DBIndex)
+	idx["test"] = int64(0)
+	idx.Update(file.NewEntry("test", "delete").Delete(), int64(1))
+	assert.NotContains(t, idx, "test")
 }

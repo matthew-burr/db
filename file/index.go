@@ -24,11 +24,26 @@ func BuildIndex(rdr io.Reader) DBIndex {
 	offset := int64(0)
 	entry := DBFileEntry{}
 	for n, err := dec.Decode(&entry); err == nil; n, err = dec.Decode(&entry) {
-		index[entry.key] = offset
+		index.Update(entry, offset)
 		offset += int64(n)
 	}
 
 	return index
+}
+
+// Update updates the index with a DBFileEntry by adding or setting the key to the offset, or by removing
+// the key, if the entry has been deleted.
+func (d DBIndex) Update(entry DBFileEntry, offset int64) {
+	if entry.deleted {
+		d.Remove(entry.key)
+		return
+	}
+	d[entry.key] = offset
+}
+
+// Remove removes a key from the index.
+func (d DBIndex) Remove(key string) {
+	delete(d, key)
 }
 
 // Debug prints information about the DBIndex and a particular entry in it to the provided writer.
