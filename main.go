@@ -35,7 +35,7 @@ func displayInterface(db *database.DB) {
 				break
 			}
 			k, v := cmdParts[1], cmdParts[2]
-			db = db.Write(k, v)
+			db.Write(k, v)
 			fmt.Println("written")
 		case "read":
 			fallthrough
