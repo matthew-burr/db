@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/matthew-burr/db/file"
+	"github.com/matthew-burr/db/filesystem"
 )
 
 // A DB is a simple key, value database.
@@ -12,11 +13,11 @@ type DB struct {
 }
 
 // Init initializes the database from a file. Once initialized, you can start querying the database.
-func Init(filepath string) *DB {
-	d := DB{
-		DBFile: file.Open(filepath),
+func Init(dbName string) *DB {
+	fs := filesystem.Init(dbName)
+	return &DB{
+		DBFile: fs.File,
 	}
-	return &d
 }
 
 // Write adds or updates a database entry by writing the value to the key.

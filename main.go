@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	db := database.Init("test.dat")
+	db := database.Init("test")
 	defer db.Shutdown()
 	displayInterface(db)
 }

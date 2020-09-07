@@ -10,7 +10,7 @@ import (
 )
 
 func SetupDBForTests() (db *database.DB, cleanup func()) {
-	db = database.Init("db_test.dat")
+	db = database.Init("db_test")
 	cleanup = func() {
 		db.Shutdown()
 		os.Remove("db_test.dat")
