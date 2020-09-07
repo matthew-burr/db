@@ -57,7 +57,7 @@ func (d DBIndex) Debug(w io.Writer, key string) {
 DBIndex Info
 ------------
 Key Found: %v
-Key Offset: %d,
-Total Entry Count: %d,
+Key Offset: %d
+Total Entry Count: %d
 `, found, offset, len(d))
 }
