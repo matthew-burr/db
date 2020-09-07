@@ -9,12 +9,14 @@ import (
 // An EntryOption is an optional setting you may provide to a DBFileEntry.
 type EntryOption func(*DBFileEntry)
 
+// Value is an EntryOption that sets the value of the entry to a given value.
 func Value(s string) EntryOption {
 	return func(d *DBFileEntry) {
 		d.value = s
 	}
 }
 
+// Deleted is an EntryOption that marks the entry as deleted.
 func Deleted(d *DBFileEntry) {
 	d.deleted = true
 }
