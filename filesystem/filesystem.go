@@ -11,7 +11,7 @@ type DBFileSystem struct {
 
 func Init(dbName string) *DBFileSystem {
 	return &DBFileSystem{
-		File: file.Open("test.dat"),
+		File: file.Open(dbName + ".dat"),
 	}
 }
 
@@ -27,6 +27,6 @@ func (d *DBFileSystem) DeleteEntry(key string) file.DBFileEntry {
 	return d.File.DeleteEntry(key)
 }
 
-func (d *DBFileSystem) Shutdown() {
+func (d *DBFileSystem) Close() {
 	d.File.Close()
 }

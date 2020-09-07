@@ -13,7 +13,7 @@ import (
 func SetupTestFileSystem() (fs *filesystem.DBFileSystem, cleanup func()) {
 	fs = filesystem.Init("test")
 	cleanup = func() {
-		fs.Shutdown()
+		fs.Close()
 		os.Remove("test.dat")
 	}
 	return
@@ -25,9 +25,9 @@ func TestInit_OpensFile(t *testing.T) {
 	assert.Equal(t, "test.dat", fs.File.File.Name())
 }
 
-func TestShutdown_ClosesFile(t *testing.T) {
+func TestClose_ClosesFile(t *testing.T) {
 	fs := filesystem.Init("test")
-	fs.Shutdown()
+	fs.Close()
 
 	err := fs.File.File.Close()
 	assert.True(t, errors.Is(err, os.ErrClosed))
