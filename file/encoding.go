@@ -1,12 +1,47 @@
 package file
 
 import (
-	"bytes"
 	"encoding/binary"
 	"io"
 )
 
-func BuildEncoder(w io.Writer) func(string) (int, error) {
+// An EncoderFunc is the signature for a function that can be used to encode a string into its binary
+// format.
+type EncoderFunc func(string) (int, error)
+
+// An Encoder encodes DBFileEntry objects.
+type Encoder struct {
+	enc EncoderFunc
+}
+
+// NewEncoder creates a new Encoder that will write entries to a writer.
+func NewEncoder(w io.Writer) *Encoder {
+	return &Encoder{
+		enc: BuildEncoderFunc(w),
+	}
+}
+
+// Encode encodes a DBFileEntry to a binary format and writes it to the Encoder's underlying writer.
+func (e *Encoder) Encode(entry DBFileEntry) (n int, err error) {
+	var (
+		nK, nV int
+	)
+
+	nK, err = e.enc(entry.Key())
+	if err != nil {
+		return 0, err
+	}
+
+	nV, err = e.enc(entry.Value())
+	if err != nil {
+		return 0, err
+	}
+
+	return nK + nV, nil
+}
+
+// BuildEncoderFunc builds an EncoderFunc that will write to an io.Writer.
+func BuildEncoderFunc(w io.Writer) EncoderFunc {
 	var err error
 	return func(s string) (int, error) {
 		b := []byte(s)
@@ -26,14 +61,9 @@ func BuildEncoder(w io.Writer) func(string) (int, error) {
 	}
 }
 
-func Encode(d DBFileEntry) []byte {
-	buf := new(bytes.Buffer)
-	EncodeTo(buf, d)
-	return buf.Bytes()
-}
-
+// EncodeTo is a utility function that will encode a DBFileEntry and write it to an io.Writer.
 func EncodeTo(w io.Writer, d DBFileEntry) (int, error) {
-	enc := BuildEncoder(w)
+	enc := BuildEncoderFunc(w)
 	var (
 		nK, nV int
 		err    error
@@ -52,7 +82,42 @@ func EncodeTo(w io.Writer, d DBFileEntry) (int, error) {
 	return nK + nV, nil
 }
 
-func BuildDecoder(r io.Reader) func(s *string) (int, error) {
+// A DecoderFunc is the signature of a function that can read the binary format of a string into a
+// string.
+type DecoderFunc func(s *string) (int, error)
+
+// A Decoder can decode DBFileEntry objects from a reader.
+type Decoder struct {
+	dec DecoderFunc
+}
+
+// NewDecoder creates a new Decoder that will read from an io.Reader.
+func NewDecoder(r io.Reader) *Decoder {
+	return &Decoder{
+		dec: BuildDecoderFunc(r),
+	}
+}
+
+// Decode reads binary data from its io.Reader into a DBFileEntry.
+func (d *Decoder) Decode(entry *DBFileEntry) (int, error) {
+	var (
+		nK, nV int
+		err    error
+	)
+	nK, err = d.dec(&entry.key)
+	if err != nil {
+		return 0, err
+	}
+
+	nV, err = d.dec(&entry.value)
+	if err != nil {
+		return 0, err
+	}
+	return nK + nV, nil
+}
+
+// BuildDecoderFunc builds a DecoderFunc that will read from the specified io.Reader.
+func BuildDecoderFunc(r io.Reader) DecoderFunc {
 	var err error
 	var n int16
 	var nSize = binary.Size(n)
@@ -74,14 +139,9 @@ func BuildDecoder(r io.Reader) func(s *string) (int, error) {
 	}
 }
 
-func Decode(b []byte) DBFileEntry {
-	d := &DBFileEntry{}
-	DecodeFrom(bytes.NewBuffer(b), d)
-	return *d
-}
-
+// DecodeFrom will read a single DBFileEntry from an io.Reader.
 func DecodeFrom(r io.Reader, d *DBFileEntry) (int, error) {
-	dec := BuildDecoder(r)
+	dec := BuildDecoderFunc(r)
 	var (
 		nK, nV int
 		err    error

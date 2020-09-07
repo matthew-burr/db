@@ -9,9 +9,12 @@ type DBIndex map[string]int64
 func BuildIndex(f io.Reader) DBIndex {
 	index := make(DBIndex)
 
-	for buf := Iterator(f); !buf.Done(); buf.MoveNext() {
-		k, _ := buf.ReadEntry().Tuple()
-		index[k] = buf.Offset()
+	dec := NewDecoder(f)
+	offset := int64(0)
+	entry := DBFileEntry{}
+	for n, err := dec.Decode(&entry); err == nil; n, err = dec.Decode(&entry) {
+		index[entry.key] = offset
+		offset += int64(n)
 	}
 
 	return index

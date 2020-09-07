@@ -94,11 +94,13 @@ func (d *DBFile) Close() {
 	d.File.Close()
 }
 
+// Reindex rebuilds the index for the DBFile.
 func (d *DBFile) Reindex() {
 	file := openFile(d.File.Name())
 	d.Index = BuildIndex(file)
 }
 
+// Debug provides some information about the DBFile.
 func (d *DBFile) Debug() {
 	fmt.Printf("current offset %d\n", d.CurrentOffset())
 }
