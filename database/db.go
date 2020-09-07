@@ -1,7 +1,7 @@
 package database
 
 import (
-	"fmt"
+	"os"
 
 	"github.com/matthew-burr/db/file"
 )
@@ -42,16 +42,6 @@ func (d DB) Shutdown() {
 // Debug provides some basic ability to check the validity of the database structure. Given a key, it will
 // determine the offset for that key, insure it's a valid offset, and return what data it finds at that offset.
 func (d DB) Debug(key string) DB {
-	d.DBFile.Debug()
-	if offset, found := d.Index[key]; found {
-		fmt.Printf("key: %s: offset = %d\n", key, offset)
-		if fileSize := d.CurrentOffset(); offset > fileSize {
-			fmt.Printf("offset exceeds file size of %d\n", fileSize)
-			return d
-		}
-		// fmt.Printf("entry at %d: %s\n", offset, d.ReadRawEntry(offset))
-	} else {
-		fmt.Printf("key: %s: not found in index\n", key)
-	}
+	d.DBFile.Debug(os.Stdout, key)
 	return d
 }

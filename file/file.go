@@ -1,6 +1,7 @@
 package file
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -101,6 +102,27 @@ func (d *DBFile) Reindex() {
 }
 
 // Debug provides some information about the DBFile.
-func (d *DBFile) Debug() {
-	fmt.Printf("current offset %d\n", d.CurrentOffset())
+func (d *DBFile) Debug(w io.Writer, key string) {
+	rdr := bufio.NewReaderSize(
+		openFile(d.File.Name()),
+		BufferSize,
+	)
+	dec := NewDecoder(rdr)
+	totalCount, entryCount := 0, 0
+	entry := &DBFileEntry{}
+	for _, err := dec.Decode(entry); err == nil; _, err = dec.Decode(entry) {
+		totalCount++
+		if entry.key == key {
+			entryCount++
+		}
+	}
+
+	fmt.Fprintf(os.Stdout, `
+DBFile Info
+-----------
+Current Offset: %d
+Key Occurrences: %d
+Total Entry Count: %d
+`, d.CurrentOffset(), entryCount, totalCount)
+	d.Index.Debug(w, key)
 }

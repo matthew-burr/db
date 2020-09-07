@@ -2,6 +2,7 @@ package file
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 )
 
@@ -28,4 +29,19 @@ func BuildIndex(rdr io.Reader) DBIndex {
 	}
 
 	return index
+}
+
+func (d DBIndex) Debug(w io.Writer, key string) {
+	offset, found := d[key]
+	if !found {
+		offset = -1
+	}
+
+	fmt.Fprintf(w, `
+DBIndex Info
+------------
+Key Found: %v
+Key Offset: %d,
+Total Entry Count: %d,
+`, found, offset, len(d))
 }
