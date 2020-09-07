@@ -27,12 +27,12 @@ func (e *Encoder) Encode(entry DBFileEntry) (n int, err error) {
 		nK, nV int
 	)
 
-	nK, err = e.enc(entry.Key())
+	nK, err = e.enc(entry.key)
 	if err != nil {
 		return 0, err
 	}
 
-	nV, err = e.enc(entry.Value())
+	nV, err = e.enc(entry.value)
 	if err != nil {
 		return 0, err
 	}
@@ -69,12 +69,12 @@ func EncodeTo(w io.Writer, d DBFileEntry) (int, error) {
 		err    error
 	)
 
-	nK, err = enc(d.Key())
+	nK, err = enc(d.key)
 	if err != nil {
 		return 0, err
 	}
 
-	nV, err = enc(d.Value())
+	nV, err = enc(d.value)
 	if err != nil {
 		return 0, err
 	}

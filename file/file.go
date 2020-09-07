@@ -65,7 +65,7 @@ func (d *DBFile) WriteEntry(entry DBFileEntry) DBFileEntry {
 	if err != nil {
 		panic(err)
 	}
-	d.Index[entry.Key()] = d.CurrentOffset()
+	d.Index[entry.key] = d.CurrentOffset()
 	d.Offset += int64(n)
 	return entry
 }
